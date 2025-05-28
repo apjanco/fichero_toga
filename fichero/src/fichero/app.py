@@ -4,21 +4,7 @@ from pathlib import Path
 import toga
 from toga.constants import COLUMN
 from toga.style import Pack
-
-def process_file(app, file_path):
-    """
-    Process a file by printing its path and type.
-    This function can be extended to perform more complex operations.
-    """
-    if file_path.is_file():
-        app.label.text = f"Processing file: {file_path.name} ({file_path.suffix})"
-        print(f"Processing file: {file_path.name} ({file_path.suffix})")
-    elif file_path.is_dir():
-        app.label.text = f"Processing directory: {file_path.name}"
-        print(f"Processing directory: {file_path.name}")
-    else:
-        app.label.text = f"Unknown type: {file_path}"
-        print(f"Unknown type: {file_path}")
+from .process import process_directory
 
 
 class Fichero(toga.App):
@@ -36,12 +22,11 @@ class Fichero(toga.App):
             )
             if path_names is not None:
                 self.label.text = (
-                    f"Folders selected: {','.join([str(p) for p in path_names])}"
+                    f"📁 Folders selected: {','.join([str(p) for p in path_names])}"
                 )
-                for dir_path in path_names:
-                    # Ensure the path is a directory
-                    for f in dir_path.glob('**/*'):
-                        process_file(self, f)
+                #process_directory
+                self.folders = [Path(p) for p in path_names]
+                print(f"Processing folders: {self.folders}")
             else:
                 self.label.text = "No folders selected!"
         except ValueError:
@@ -87,6 +72,13 @@ class Fichero(toga.App):
             if not isinstance(window, toga.MainWindow):
                 window.close()
 
+    def action_select_model(self, widget):
+        # check if self has attribute folders
+        if not hasattr(self, 'folders'):
+            self.label.text = "Please select folders first!"
+            return
+        
+
     async def exit_handler(self, app):
         # Return True if app should close, and False if it should remain open
         if await self.dialog(
@@ -98,8 +90,6 @@ class Fichero(toga.App):
             self.label.text = "Exit canceled"
             return False
 
-    def set_window_label_text(self, num_windows):
-        self.window_label.text = f"{num_windows} secondary window(s) open"
 
     def startup(self):
         # Set up main window
@@ -111,7 +101,6 @@ class Fichero(toga.App):
         self.window_label = toga.Label("", style=Pack(margin_top=20))
         self.window_counter = 0
         self.close_attempts = set()
-        self.set_window_label_text(0)
 
         # Buttons
         btn_style = Pack(flex=1)
@@ -121,22 +110,49 @@ class Fichero(toga.App):
             on_press=self.action_select_folder_dialog_multi,
             style=btn_style,
         )
-        
+        btn_select_model = toga.Button(
+            "Select Model",
+            on_press=self.action_select_model,
+            style=btn_style,
+        )
         btn_clear = toga.Button("Clear", on_press=self.do_clear, style=btn_style)
 
+        model_selection = toga.Selection(
+            items=["Alice", "Bob", "Charlie"],
+            #on_select=self.action_select_model,
+        )
+        
+        my_image = toga.Image(self.paths.app / "resources"/ "fichero.webp")
+        logo = toga.ImageView(my_image,
+                              style=Pack(
+                                  width=200,
+                                  height=200,
+                                  margin_bottom=20,
+                                  margin_top=20,
+                              ))
+        left_container = toga.Box(
+            children=[
+               logo
+            ],
+            style=Pack(
+                flex=1, width=200, direction=COLUMN, margin=10
+            ),
+        )
+        
         # Outermost box
-        box = toga.Box(
+        right_container = toga.Box(
             children=[
                 btn_select_multi,
-                btn_clear,
+                btn_select_model,
+                model_selection,
                 self.label,
                 self.window_label,
             ],
             style=Pack(flex=1, direction=COLUMN, margin=10),
         )
-
+        split = toga.SplitContainer(content=[left_container, right_container])
         # Add the content on the main window
-        self.main_window.content = box
+        self.main_window.content = split
 
         # Show the main window
         self.main_window.show()
