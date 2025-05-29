@@ -6,14 +6,34 @@ from toga.constants import COLUMN
 from toga.style import Pack
 from .process import process_directory
 
+models_config = [
+    {"name": "qwen-vl-max-latest", "provider": "dashscope"},
+    {"name": "llama", "provider": "ollama"},
+    {"name": "gpt-4o", "provider": "openai"},
+]
+
+provider_config = {
+    "dashscope:": {
+        "api_key": "YOUR_DASHSCOPE_API_KEY",
+        "url": "https://api.dashscope.com/v1/vlm",
+    },
+    "ollama": {
+        "api_key": "YOUR_OLLAMA_API_KEY",
+        "url": "http://localhost:11434/api/v1/chat/completions",
+    },
+    "openai": {
+        "api_key": "YOUR_OPENAI_API_KEY",
+        "url": "https://api.openai.com/v1/chat/completions",
+    }
+}
 
 class Fichero(toga.App):
     # Button callback functions
     def do_clear(self, widget, **kwargs):
         self.folders = []
-        self.label.text = "Ready."
+        self.label.text = "📁 Folders selected:\n"
 
-    async def action_select_folder_dialog_multi(self, widget):
+    async def action_select_folders(self, widget):
         try:
             path_names = await self.main_window.dialog(
                 toga.SelectFolderDialog(
@@ -23,7 +43,7 @@ class Fichero(toga.App):
             )
             if path_names is not None:
                 self.label.text = (
-                    f"📁 Folders selected: {','.join([str(p) for p in path_names])}"
+                    f"📁 Folders selected:\n {'\n'.join([str(p) for p in path_names])}"
                 )
                 #process_directory
                 self.folders = [Path(p) for p in path_names]
@@ -74,14 +94,15 @@ class Fichero(toga.App):
                 window.close()
 
     def action_select_model(self, widget):
-        # check if self has attribute folders
-        if not hasattr(self, 'folders'):
-            self.label.text = "Please select folders first!"
-            return
-        elif not self.folders:
-            self.label.text = "No folders selected!"
-            return
-        
+        # get the selected model from the selection widget
+        self.center_label.text = f"✨ Model: {self.model_selection.value.name}\n  Provider: {self.model_selection.value.provider}"
+
+    def action_select_output_folder(self, widget):
+        self.right_label.text = "💾 Output Folder:\n Hello!"        
+
+    def action_select_output_format(self, widget):
+        self.right_label.text = "💾 Output Format:\n Markdown?"
+
 
     async def exit_handler(self, app):
         # Return True if app should close, and False if it should remain open
@@ -95,13 +116,20 @@ class Fichero(toga.App):
             return False
 
 
+
     def startup(self):
         # Set up main window
         self.main_window = toga.MainWindow()
         self.on_exit = self.exit_handler
 
         # Label to show responses.
-        self.label = toga.Label("Ready.", style=Pack(margin_top=20))
+        self.label = toga.Label("📁 Folders selected:\n", style=Pack(margin_top=20))
+        self.center_label = toga.Label(
+            "✨ Model:", style=Pack(margin_top=20)
+        )
+        self.right_label = toga.Label(
+            "💾 Output Folder:\n", style=Pack(margin_top=20)
+        )
         self.window_label = toga.Label("", style=Pack(margin_top=20))
         self.window_counter = 0
         self.close_attempts = set()
@@ -111,7 +139,7 @@ class Fichero(toga.App):
         
         btn_select_folders = toga.Button(
             "Select Folders",
-            on_press=self.action_select_folder_dialog_multi,
+            on_press=self.action_select_folders,
             style=btn_style,
         )
         btn_select_model = toga.Button(
@@ -120,12 +148,23 @@ class Fichero(toga.App):
             style=btn_style,
         )
         btn_clear = toga.Button("Clear", on_press=self.do_clear, style=btn_style)
-
-        model_selection = toga.Selection(
-            items=["openAI", "ai-sandbox", "ollama", "dashscope"],
-            #on_select=self.action_select_model,
+        btn_start = toga.Button(
+            "Start / Iniciar",
+            #on_press=
+            # green button 
+            style=Pack(
+                background_color="green",
+                color="white",
+                flex=1,
+                margin_top=20,
+                margin_bottom=20,
+            ),
         )
-        
+        model_selection = toga.Selection(
+            items=models_config,
+            accessor="name",
+        )
+        self.model_selection = model_selection
         my_image = toga.Image(self.paths.app / "resources"/ "fichero.webp")
         logo = toga.ImageView(
             my_image,
@@ -137,9 +176,16 @@ class Fichero(toga.App):
             alignment="center",
             )
         )
-        left_container = toga.Box(
+        info_container = toga.Box(
             children=[
                logo,
+               btn_start
+            ],
+            #make the container only as wide as the logo
+            style=Pack(flex=1, direction=COLUMN, margin=10, width=220),
+        )
+        left_container = toga.Box(
+            children=[
                 btn_select_folders,
                 btn_clear,
                 self.label
@@ -151,9 +197,9 @@ class Fichero(toga.App):
         
         center_container = toga.Box(
             children=[
-                btn_select_model,
                 model_selection,
-                self.window_label,
+                btn_select_model,
+                self.center_label
             ],
             style=Pack(flex=1, direction=COLUMN, margin=10),
         )
@@ -161,20 +207,22 @@ class Fichero(toga.App):
         right_container = toga.Box(
             children=[
                 toga.Button(
-                    "Open Secondary Window",
-                    on_press=self.action_open_secondary_window,
+                    "Select Output Folder",
+                    on_press=self.action_select_output_folder,
                     style=btn_style,
                 ),
                 toga.Button(
-                    "Close Secondary Windows",
-                    on_press=self.action_close_secondary_windows,
+                    "Output Format",
+                    on_press=self.action_select_output_format,
                     style=btn_style,
                 ),
+                self.right_label,
             ],
             style=Pack(flex=1, direction=COLUMN, margin=10),
         )
+        left_split = toga.SplitContainer(content=[info_container, left_container])
         right_split = toga.SplitContainer(content=[center_container, right_container])
-        main = toga.SplitContainer(content=[left_container, right_split])
+        main = toga.SplitContainer(content=[left_split, right_split])
         # Add the content on the main window
         self.main_window.content = main
 
