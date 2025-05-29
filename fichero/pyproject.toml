@@ -3,7 +3,7 @@
 project_name = "Fichero"
 bundle = "co.apjan"
 version = "0.0.1"
-url = "https://apjan.co/fichero"
+url = "https://www.tubb.ca/fichero/"
 license.file = "LICENSE"
 author = "apjanco"
 author_email = "apjanco@gmail.com"
@@ -13,6 +13,7 @@ formal_name = "Fichero"
 description = "Fichero provides a system for processing research materials such as images or PDFs and transforming them into structured research data for analysis."
 long_description = """More details about the app should go here.
 """
+icon = "src/fichero/resources/icons/fichero"
 sources = [
     "src/fichero",
 ]
