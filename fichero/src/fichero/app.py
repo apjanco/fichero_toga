@@ -10,6 +10,7 @@ from .process import process_directory
 class Fichero(toga.App):
     # Button callback functions
     def do_clear(self, widget, **kwargs):
+        self.folders = []
         self.label.text = "Ready."
 
     async def action_select_folder_dialog_multi(self, widget):
@@ -77,6 +78,9 @@ class Fichero(toga.App):
         if not hasattr(self, 'folders'):
             self.label.text = "Please select folders first!"
             return
+        elif not self.folders:
+            self.label.text = "No folders selected!"
+            return
         
 
     async def exit_handler(self, app):
@@ -105,7 +109,7 @@ class Fichero(toga.App):
         # Buttons
         btn_style = Pack(flex=1)
         
-        btn_select_multi = toga.Button(
+        btn_select_folders = toga.Button(
             "Select Folders",
             on_press=self.action_select_folder_dialog_multi,
             style=btn_style,
@@ -118,41 +122,61 @@ class Fichero(toga.App):
         btn_clear = toga.Button("Clear", on_press=self.do_clear, style=btn_style)
 
         model_selection = toga.Selection(
-            items=["Alice", "Bob", "Charlie"],
+            items=["openAI", "ai-sandbox", "ollama", "dashscope"],
             #on_select=self.action_select_model,
         )
         
         my_image = toga.Image(self.paths.app / "resources"/ "fichero.webp")
-        logo = toga.ImageView(my_image,
-                              style=Pack(
-                                  width=200,
-                                  height=200,
-                                  margin_bottom=20,
-                                  margin_top=20,
-                              ))
+        logo = toga.ImageView(
+            my_image,
+            style=Pack(
+            width=200,
+            height=200,
+            margin_bottom=20,
+            margin_top=20,
+            alignment="center",
+            )
+        )
         left_container = toga.Box(
             children=[
-               logo
+               logo,
+                btn_select_folders,
+                btn_clear,
+                self.label
+
             ],
-            style=Pack(
-                flex=1, width=200, direction=COLUMN, margin=10
-            ),
+            #make the container only as wide as the logo
+            style=Pack(flex=1, direction=COLUMN, margin=10, width=220),
         )
         
-        # Outermost box
-        right_container = toga.Box(
+        center_container = toga.Box(
             children=[
-                btn_select_multi,
                 btn_select_model,
                 model_selection,
-                self.label,
                 self.window_label,
             ],
             style=Pack(flex=1, direction=COLUMN, margin=10),
         )
-        split = toga.SplitContainer(content=[left_container, right_container])
+        # Outermost box
+        right_container = toga.Box(
+            children=[
+                toga.Button(
+                    "Open Secondary Window",
+                    on_press=self.action_open_secondary_window,
+                    style=btn_style,
+                ),
+                toga.Button(
+                    "Close Secondary Windows",
+                    on_press=self.action_close_secondary_windows,
+                    style=btn_style,
+                ),
+            ],
+            style=Pack(flex=1, direction=COLUMN, margin=10),
+        )
+        right_split = toga.SplitContainer(content=[center_container, right_container])
+        main = toga.SplitContainer(content=[left_container, right_split])
         # Add the content on the main window
-        self.main_window.content = split
+        self.main_window.content = main
 
         # Show the main window
         self.main_window.show()
