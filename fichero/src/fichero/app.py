@@ -45,15 +45,31 @@ class Fichero(toga.App):
                 self.label.text = (
                     f"📁 Folders selected:\n {'\n'.join([str(p) for p in path_names])}"
                 )
-                #process_directory
                 self.folders = [Path(p) for p in path_names]
-                print(f"Processing folders: {self.folders}")
             else:
                 self.label.text = "No folders selected!"
         except ValueError:
             self.label.text = "Folders select dialog was canceled"
 
-    
+    async def action_select_output_folder(self, widget):
+        try:
+            path_name = await self.main_window.dialog(
+                toga.SelectFolderDialog(
+                    "Select single folder with Toga",
+                    multiple_select=False,
+                )
+            )
+            if path_name is not None:
+                self.right_label.text = (
+                    f"💾 Output Folder:\n {path_name}"
+                )
+                self.output_folder = path_name
+                print(f"💾 Output Folder:\n {self.output_folder}")
+            else:
+                self.label.text = "No folders selected!"
+        except ValueError:
+            self.label.text = "Folders select dialog was canceled"
+
     async def window_close_handler(self, window):
         # This handler is called before the window is closed, so there
         # still are 1 more windows than the number of secondary windows
@@ -97,9 +113,6 @@ class Fichero(toga.App):
         # get the selected model from the selection widget
         self.center_label.text = f"✨ Model: {self.model_selection.value.name}\n  Provider: {self.model_selection.value.provider}"
 
-    def action_select_output_folder(self, widget):
-        self.right_label.text = "💾 Output Folder:\n Hello!"        
-
     def action_select_output_format(self, widget):
         self.right_label.text = "💾 Output Format:\n Markdown?"
 
@@ -121,7 +134,7 @@ class Fichero(toga.App):
         # Set up main window
         self.main_window = toga.MainWindow()
         self.on_exit = self.exit_handler
-
+        self.folders = []
         # Label to show responses.
         self.label = toga.Label("📁 Folders selected:\n", style=Pack(margin_top=20))
         self.center_label = toga.Label(
@@ -130,7 +143,7 @@ class Fichero(toga.App):
         self.right_label = toga.Label(
             "💾 Output Folder:\n", style=Pack(margin_top=20)
         )
-        self.window_label = toga.Label("", style=Pack(margin_top=20))
+        self.info_label = toga.Label("", style=Pack(margin_top=20))
         self.window_counter = 0
         self.close_attempts = set()
 
@@ -147,10 +160,29 @@ class Fichero(toga.App):
             on_press=self.action_select_model,
             style=btn_style,
         )
+        btn_select_output_folders = toga.Button(
+            "Select Output Folder",
+            on_press=self.action_select_output_folder,
+            style=btn_style,
+        )
         btn_clear = toga.Button("Clear", on_press=self.do_clear, style=btn_style)
+        model_selection = toga.Selection(
+            items=models_config,
+            accessor="name",
+        )
+        self.model_selection = model_selection
+
+        def on_start_pressed(widget):
+            # Safely access current selections and folders
+            if self.folders and self.model_selection.value:
+                self.info_label.text = ""
+                process_directory(self.folders, self.model_selection.value.provider, self.model_selection.value.name)
+            else:
+                self.info_label.text = "Please select folders\n and a model before starting."
+
         btn_start = toga.Button(
             "Start / Iniciar",
-            #on_press=
+            on_press=on_start_pressed,
             # green button 
             style=Pack(
                 background_color="green",
@@ -160,12 +192,7 @@ class Fichero(toga.App):
                 margin_bottom=20,
             ),
         )
-        model_selection = toga.Selection(
-            items=models_config,
-            accessor="name",
-        )
-        self.model_selection = model_selection
-        my_image = toga.Image(self.paths.app / "resources"/ "fichero.webp")
+        my_image = toga.Image(self.paths.app / "resources"/ "icons" / "fichero-512.png")
         logo = toga.ImageView(
             my_image,
             style=Pack(
@@ -179,7 +206,8 @@ class Fichero(toga.App):
         info_container = toga.Box(
             children=[
                logo,
-               btn_start
+               btn_start,
+               self.info_label
             ],
             #make the container only as wide as the logo
             style=Pack(flex=1, direction=COLUMN, margin=10, width=220),
@@ -206,11 +234,7 @@ class Fichero(toga.App):
         # Outermost box
         right_container = toga.Box(
             children=[
-                toga.Button(
-                    "Select Output Folder",
-                    on_press=self.action_select_output_folder,
-                    style=btn_style,
-                ),
+                btn_select_output_folders,
                 toga.Button(
                     "Output Format",
                     on_press=self.action_select_output_format,

@@ -74,8 +74,22 @@ def sandbox_vlm_options(model: str, prompt: str):
     )
     return options
 
-
 def process_directory(input_dir_path: Path, type: str = "dashscope", model: str = "qwen-vl-max-latest", prompt: str = "Extract text to markdown."):
+    """
+    Process all files in a directory using the specified VLM type, model, and prompt.
+    
+    Args:
+        input_dir_path (Path): The path to the directory containing files to process.
+        type (str): The type of VLM to use (default is "dashscope").
+        model (str): The model to use for processing (default is "qwen-vl-max-latest").
+        prompt (str): The prompt to use for processing (default is "Extract text to markdown.").
+    
+    Returns:
+        list: A list of processed documents.
+    """
+    print(f"Processing directory: {input_dir_path} with type: {type}, model: {model}, prompt: {prompt}")
+
+def process_directory_dude(input_dir_path: Path, type: str = "dashscope", model: str = "qwen-vl-max-latest", prompt: str = "Extract text to markdown."):
     if input_dir_path.is_dir():
         docs = []
         for file_path in input_dir_path.glob('**/*'):

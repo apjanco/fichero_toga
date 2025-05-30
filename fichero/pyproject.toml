@@ -22,7 +22,8 @@ test_sources = [
 ]
 
 requires = [
-    "docling==2.34.0"
+    "docling==2.34.0",
+    "pygobject==3.50.0"
 ]
 test_requires = [
     "pytest",
