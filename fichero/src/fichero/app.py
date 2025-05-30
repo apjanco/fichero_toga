@@ -5,11 +5,12 @@ import toga
 from toga.constants import COLUMN
 from toga.style import Pack
 from .process import process_folders
+from .store import test_chroma_client
 
 models_config = [
     {"name": "qwen-vl-max-latest", "provider": "dashscope"},
-    {"name": "llama", "provider": "ollama"},
-    {"name": "gpt-4o", "provider": "openai"},
+    {"name": "granite3.2-vision", "provider": "ollama"},
+    {"name": "gpt-4o", "provider": "sandbox"},
 ]
 
 
@@ -32,6 +33,11 @@ provider_config = {
     "openai": {
         "api_key": "YOUR_OPENAI_API_KEY",
         "url": "https://api.openai.com/v1/chat/completions",
+        "prompt": "Extract text to markdown.",
+    },
+    "sandbox": {
+        "api_key":"",
+        "url": "complicated",
         "prompt": "Extract text to markdown.",
     }
 }
@@ -174,6 +180,7 @@ class Fichero(toga.App):
         self.main_window = toga.MainWindow()
         self.on_exit = self.exit_handler
         self.folders = []
+        self.output_folder = None
         # Label to show responses.
         self.label = toga.Label("📁 Folders selected:\n", style=Pack(margin_top=20))
         self.center_label = toga.Label(
@@ -216,6 +223,14 @@ class Fichero(toga.App):
             on_press=self.action_open_model_config_editor,
             style=btn_style,
         )
+
+        # confirmed that the Chroma is compatible with Toga in dev
+        # btn_test_chroma = toga.Button(
+        #     "Test Chroma Client",
+        #     on_press=test_chroma_client,
+        #     style=btn_style,
+        # )
+
         # Start button
         def on_start_pressed(widget):
             if self.folders and self.model_selection.value:
@@ -259,7 +274,8 @@ class Fichero(toga.App):
             children=[
                logo,
                btn_start,
-               self.info_label
+               self.info_label,
+               #btn_test_chroma
             ],
             #make the container only as wide as the logo
             style=Pack(flex=1, direction=COLUMN, margin=10, width=220),

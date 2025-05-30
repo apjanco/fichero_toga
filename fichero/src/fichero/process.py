@@ -51,11 +51,11 @@ def dashscope_vlm_options(model: str, prompt: str, api_key: str = None):
     return options
 
 
-def sandbox_vlm_options(model: str, prompt: str):
+def sandbox_vlm_options(model: str, prompt: str, api_key: str = None):
     SANDBOX_ENDPOINT = "https://api-ai-sandbox.princeton.edu/"
     SANDBOX_API_VERSION = "2025-03-01-preview"
 
-    api_key = userdata.get('AI_SANDBOX_KEY')
+    api_key = api_key
     options = ApiVlmOptions(
         url=SANDBOX_ENDPOINT + "openai/deployments/" + model +
         "/chat/completions?api-version=" + SANDBOX_API_VERSION,
@@ -90,6 +90,7 @@ def process_folders(
         list: A list of processed documents.
     """
     input_folders = app.folders
+    output_folder = app.output_folder
     provider = app.model_selection.value.provider 
     model = app.model_selection.value.name 
     provider_config= provider_config[provider]
