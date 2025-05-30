@@ -12,6 +12,7 @@ models_config = [
     {"name": "gpt-4o", "provider": "openai"},
 ]
 
+
 provider_config = {
     "dashscope:": {
         "api_key": "YOUR_DASHSCOPE_API_KEY",
@@ -116,6 +117,77 @@ class Fichero(toga.App):
     def action_select_output_format(self, widget):
         self.right_label.text = "💾 Output Format:\n Markdown?"
 
+    def action_open_models_config_editor(self, widget):
+        # Create a window for editing models_config
+        editor_window = toga.Window(title="Edit Models Config")
+
+        # Store entry widgets for later access
+        self.model_entries = []
+
+        # Create a box for each model entry
+        entry_boxes = []
+        for model in models_config:
+            name_entry = toga.TextInput()
+            name_entry.value = model["name"]
+            provider_entry = toga.TextInput()
+            provider_entry.value = model["provider"]
+            self.model_entries.append((name_entry, provider_entry))
+            entry_box = toga.Box(
+                children=[
+                    toga.Label("Name:", style=Pack(width=60)),
+                    name_entry,
+                    toga.Label("Provider:", style=Pack(width=70)),
+                    provider_entry,
+                ],
+                style=Pack(direction="row", margin_bottom=5),
+            )
+            entry_boxes.append(entry_box)
+
+        # Add button to add a new model
+        def add_model(widget):
+            name_entry = toga.TextInput()
+            provider_entry = toga.TextInput()
+            self.model_entries.append((name_entry, provider_entry))
+            new_box = toga.Box(
+                children=[
+                    toga.Label("Name:", style=Pack(width=60)),
+                    name_entry,
+                    toga.Label("Provider:", style=Pack(width=70)),
+                    provider_entry,
+                ],
+                style=Pack(direction="row", margin_bottom=5),
+            )
+            models_box.children.insert(-2, new_box)  # Insert before buttons
+            editor_window.content.refresh()
+
+        # Save button callback
+        def save_models(widget):
+            # Update models_config with new values
+            models_config.clear()
+            for name_entry, provider_entry in self.model_entries:
+                name = name_entry.value.strip()
+                provider = provider_entry.value.strip()
+                if name and provider:
+                    models_config.append({"name": name, "provider": provider})
+            editor_window.close()
+            # Refresh model_selection items
+            self.model_selection.items = models_config
+
+        # Cancel button callback
+        def cancel_edit(widget):
+            editor_window.close()
+
+        add_btn = toga.Button("Add Model", on_press=add_model, style=Pack(width=100))
+        save_btn = toga.Button("Save", on_press=save_models, style=Pack(width=80))
+        cancel_btn = toga.Button("Cancel", on_press=cancel_edit, style=Pack(width=80))
+
+        models_box = toga.Box(
+            children=entry_boxes + [add_btn, toga.Box(children=[save_btn, cancel_btn], style=Pack(direction="row", padding_top=10))],
+            style=Pack(direction="column", padding=10),
+        )
+
+        editor_window.content = models_box
+        editor_window.show()
 
     async def exit_handler(self, app):
         # Return True if app should close, and False if it should remain open
@@ -127,6 +199,7 @@ class Fichero(toga.App):
         else:
             self.label.text = "Exit canceled"
             return False
+
 
 
 
@@ -171,9 +244,14 @@ class Fichero(toga.App):
             accessor="name",
         )
         self.model_selection = model_selection
-
+        
+        btn_models_config = toga.Button(
+            "Edit Models Config",
+            on_press=self.action_open_models_config_editor,
+            style=btn_style,
+        )
+        # Start button
         def on_start_pressed(widget):
-            # Safely access current selections and folders
             if self.folders and self.model_selection.value:
                 self.info_label.text = ""
                 process_directory(self.folders, self.model_selection.value.provider, self.model_selection.value.name)
@@ -203,6 +281,8 @@ class Fichero(toga.App):
             alignment="center",
             )
         )
+
+        # Containers
         info_container = toga.Box(
             children=[
                logo,
@@ -227,6 +307,7 @@ class Fichero(toga.App):
             children=[
                 model_selection,
                 btn_select_model,
+                btn_models_config,
                 self.center_label
             ],
             style=Pack(flex=1, direction=COLUMN, margin=10),
