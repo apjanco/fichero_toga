@@ -29,9 +29,9 @@ def ollama_vlm_options(model: str, prompt: str):
     return options
 
 
-def dashscope_vlm_options(model: str, prompt: str):
+def dashscope_vlm_options(model: str, prompt: str, api_key: str = None):
     # os.environ.get("DASHSCOPE_API_KEY")
-    api_key = userdata.get('DASHSCOPE_API_KEY')
+    api_key = api_key
     options = ApiVlmOptions(
         url="https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions",
         params=dict(
@@ -74,55 +74,63 @@ def sandbox_vlm_options(model: str, prompt: str):
     )
     return options
 
-def process_directory(input_dir_path: Path, type: str = "dashscope", model: str = "qwen-vl-max-latest", prompt: str = "Extract text to markdown."):
+def process_folders(
+        app,
+        models_config:list = None, 
+        provider_config:dict = None
+        ) -> list:
     """
     Process all files in a directory using the specified VLM type, model, and prompt.
     
     Args:
-        input_dir_path (Path): The path to the directory containing files to process.
-        type (str): The type of VLM to use (default is "dashscope").
-        model (str): The model to use for processing (default is "qwen-vl-max-latest").
-        prompt (str): The prompt to use for processing (default is "Extract text to markdown.").
-    
+        app: The application instance containing configuration and state.
+        models_config (list): A list of model configurations (not used in this function).
+        provider_config (dict): A dictionary containing provider-specific configurations.
     Returns:
         list: A list of processed documents.
     """
-    print(f"Processing directory: {input_dir_path} with type: {type}, model: {model}, prompt: {prompt}")
+    input_folders = app.folders
+    provider = app.model_selection.value.provider 
+    model = app.model_selection.value.name 
+    provider_config= provider_config[provider]
+    api_key = provider_config.get('api_key', None)
+    prompt = provider_config.get('prompt', "Extract text to markdown!")
+    
+    docs = []
+    for input_dir in input_folders:
+        if input_dir.is_dir():
+            for file_path in input_dir.glob('**/*'):
+                if file_path.suffix.lower().replace('.','') in supported_extensions:
+                    print(f"Processing file 105: {file_path}")
+                    doc = process_file(file_path, provider, model, prompt, api_key)
+                    if doc:
+                        docs.append(doc)
+            return docs
+        else:
+            raise ValueError(f"Input path {input_dir} is not a directory.")
 
-def process_directory_dude(input_dir_path: Path, type: str = "dashscope", model: str = "qwen-vl-max-latest", prompt: str = "Extract text to markdown."):
-    if input_dir_path.is_dir():
-        docs = []
-        for file_path in input_dir_path.glob('**/*'):
-            if file_path.suffix.lower() in supported_extensions:
-                doc = process_file(file_path, type, model, prompt)
-                if doc:
-                    docs.append(doc)
-        return docs
-    else:
-        raise ValueError(f"Input path {input_dir_path} is not a directory.")
 
-
-def process_file(input_doc_path: Path, type: str = "dashscope", model: str = "qwen-vl-max-latest", prompt: str = "Extract text to markdown."):
+def process_file(input_doc_path: Path, provider: str = "dashscope", model: str = "qwen-vl-max-latest", prompt: str = "Extract text to markdown.", api_key: str = None):
     logging.basicConfig(level=logging.INFO)
 
     pipeline_options = VlmPipelineOptions(
         enable_remote_services=True
     )
 
-    if type == "ollama":
+    if provider == "ollama":
         pipeline_options.vlm_options = ollama_vlm_options(
             model=model,
             prompt=prompt,
         )
 
-    if type == "dashscope":
+    if provider == "dashscope":
         pipeline_options.vlm_options = dashscope_vlm_options(
-            model=model, prompt=prompt
+            model=model, prompt=prompt, api_key=api_key
         )
 
-    if type == "sandbox":
+    if provider == "sandbox":
         pipeline_options.vlm_options = sandbox_vlm_options(
-            model=model, prompt=prompt
+            model=model, prompt=prompt, api_key=api_key
         )
 
     # Create the DocumentConverter and launch the conversion.

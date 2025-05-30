@@ -4,7 +4,7 @@ from pathlib import Path
 import toga
 from toga.constants import COLUMN
 from toga.style import Pack
-from .process import process_directory
+from .process import process_folders
 
 models_config = [
     {"name": "qwen-vl-max-latest", "provider": "dashscope"},
@@ -14,17 +14,25 @@ models_config = [
 
 
 provider_config = {
-    "dashscope:": {
-        "api_key": "YOUR_DASHSCOPE_API_KEY",
+    "dashscope": {
+        "api_key": "sk-2",
         "url": "https://api.dashscope.com/v1/vlm",
+        "prompt": "Extract text to markdown.",
     },
     "ollama": {
-        "api_key": "YOUR_OLLAMA_API_KEY",
+        "api_key": "OLLAMA_NEEDS_NO_KEY",
         "url": "http://localhost:11434/api/v1/chat/completions",
+        "prompt": "Extract text to markdown.",
+    },
+    "gpt4all":{
+        "api_key": "GPT4ALL_NEEDS_NO_KEY",
+        "url": "http://localhost:11434/api/v1/chat/completions",
+        "prompt": "Extract text to markdown.",
     },
     "openai": {
         "api_key": "YOUR_OPENAI_API_KEY",
         "url": "https://api.openai.com/v1/chat/completions",
+        "prompt": "Extract text to markdown.",
     }
 }
 
@@ -117,77 +125,35 @@ class Fichero(toga.App):
     def action_select_output_format(self, widget):
         self.right_label.text = "💾 Output Format:\n Markdown?"
 
-    def action_open_models_config_editor(self, widget):
+    def action_open_model_config_editor(self, widget):
         # Create a window for editing models_config
-        editor_window = toga.Window(title="Edit Models Config")
+        editor_window = toga.Window(title="Edit Model Config")
 
-        # Store entry widgets for later access
-        self.model_entries = []
-
+        # get currently selected model 
+        current_model = self.model_selection.value.name
         # Create a box for each model entry
-        entry_boxes = []
-        for model in models_config:
-            name_entry = toga.TextInput()
-            name_entry.value = model["name"]
-            provider_entry = toga.TextInput()
-            provider_entry.value = model["provider"]
-            self.model_entries.append((name_entry, provider_entry))
-            entry_box = toga.Box(
-                children=[
-                    toga.Label("Name:", style=Pack(width=60)),
-                    name_entry,
-                    toga.Label("Provider:", style=Pack(width=70)),
-                    provider_entry,
-                ],
-                style=Pack(direction="row", margin_bottom=5),
+        current_model_data = [model for model in models_config if model["name"] == current_model]
+        if current_model_data:
+            current_model_data = current_model_data[0]
+            # Create input fields for editing model fields
+            name_input = toga.TextInput(value=current_model_data["name"], placeholder="Model Name")
+            provider_input = toga.TextInput(value=current_model_data["provider"], placeholder="Provider")
+
+            def save_changes(widget):
+                current_model_data["name"] = name_input.value
+                current_model_data["provider"] = provider_input.value
+                self.center_label.text = f"✨ Model: {current_model_data['name']}\n  Provider: {current_model_data['provider']}"
+                editor_window.close()
+
+            save_button = toga.Button("Save", on_press=save_changes, style=Pack(margin_top=10))
+
+            model_box = toga.Box(
+                children=[name_input, provider_input, save_button],
+                style=Pack(direction=COLUMN, padding=10)
             )
-            entry_boxes.append(entry_box)
-
-        # Add button to add a new model
-        def add_model(widget):
-            name_entry = toga.TextInput()
-            provider_entry = toga.TextInput()
-            self.model_entries.append((name_entry, provider_entry))
-            new_box = toga.Box(
-                children=[
-                    toga.Label("Name:", style=Pack(width=60)),
-                    name_entry,
-                    toga.Label("Provider:", style=Pack(width=70)),
-                    provider_entry,
-                ],
-                style=Pack(direction="row", margin_bottom=5),
-            )
-            models_box.children.insert(-2, new_box)  # Insert before buttons
-            editor_window.content.refresh()
-
-        # Save button callback
-        def save_models(widget):
-            # Update models_config with new values
-            models_config.clear()
-            for name_entry, provider_entry in self.model_entries:
-                name = name_entry.value.strip()
-                provider = provider_entry.value.strip()
-                if name and provider:
-                    models_config.append({"name": name, "provider": provider})
-            editor_window.close()
-            # Refresh model_selection items
-            self.model_selection.items = models_config
-
-        # Cancel button callback
-        def cancel_edit(widget):
-            editor_window.close()
-
-        add_btn = toga.Button("Add Model", on_press=add_model, style=Pack(width=100))
-        save_btn = toga.Button("Save", on_press=save_models, style=Pack(width=80))
-        cancel_btn = toga.Button("Cancel", on_press=cancel_edit, style=Pack(width=80))
-
-        models_box = toga.Box(
-            children=entry_boxes + [add_btn, toga.Box(children=[save_btn, cancel_btn], style=Pack(direction="row", padding_top=10))],
-            style=Pack(direction="column", padding=10),
-        )
-
-        editor_window.content = models_box
-        editor_window.show()
+             
+            editor_window.content = model_box
+            editor_window.show()
 
     async def exit_handler(self, app):
         # Return True if app should close, and False if it should remain open
@@ -246,15 +212,21 @@ class Fichero(toga.App):
         self.model_selection = model_selection
         
         btn_models_config = toga.Button(
-            "Edit Models Config",
-            on_press=self.action_open_models_config_editor,
+            "Edit Model Config",
+            on_press=self.action_open_model_config_editor,
             style=btn_style,
         )
         # Start button
         def on_start_pressed(widget):
             if self.folders and self.model_selection.value:
                 self.info_label.text = ""
-                process_directory(self.folders, self.model_selection.value.provider, self.model_selection.value.name)
+                docs = process_folders(
+                        self,
+                        models_config, 
+                        provider_config)
+                print(f"Processed {len(docs)} documents.")
+                if docs:
+                    print(docs[0].document.export_to_markdown())
             else:
                 self.info_label.text = "Please select folders\n and a model before starting."
 
