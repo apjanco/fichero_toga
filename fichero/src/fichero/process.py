@@ -106,7 +106,15 @@ def process_folders(
                     doc = process_file(file_path, provider, model, prompt, api_key)
                     if doc:
                         docs.append(doc)
-            return docs
+                    if doc and output_folder:
+                        # Save the processed document to the output folder
+                        output_path = output_folder / file_path.with_suffix('.md').relative_to(input_dir)
+                        output_path.parent.mkdir(parents=True, exist_ok=True)
+                        if not output_path.is_dir():
+                            doc.document.save_as_markdown(str(output_path))  # using str because of IsADirectoryError
+                        else:
+                            raise IsADirectoryError(f"Output path {output_path} is a directory, not a file.")
+                return docs
         else:
             raise ValueError(f"Input path {input_dir} is not a directory.")
 

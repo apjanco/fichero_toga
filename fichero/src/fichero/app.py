@@ -1,6 +1,6 @@
 import traceback
 from pathlib import Path
-
+import os
 import toga
 from toga.constants import COLUMN
 from toga.style import Pack
@@ -16,7 +16,7 @@ models_config = [
 
 provider_config = {
     "dashscope": {
-        "api_key": "sk-2",
+    "api_key": os.environ.get('DASHSCOPE_API_KEY'),
         "url": "https://api.dashscope.com/v1/vlm",
         "prompt": "Extract text to markdown.",
     },
@@ -31,12 +31,12 @@ provider_config = {
         "prompt": "Extract text to markdown.",
     },
     "openai": {
-        "api_key": "YOUR_OPENAI_API_KEY",
+        "api_key": os.environ.get('OPENAI_API_KEY'),
         "url": "https://api.openai.com/v1/chat/completions",
         "prompt": "Extract text to markdown.",
     },
     "sandbox": {
-        "api_key":"",
+        "api_key": os.environ.get('SANDBOX_API_KEY'),
         "url": "complicated",
         "prompt": "Extract text to markdown.",
     }
@@ -47,6 +47,18 @@ class Fichero(toga.App):
     def do_clear(self, widget, **kwargs):
         self.folders = []
         self.label.text = "📁 Folders selected:\n"
+
+    async def action_open_logs(self, widget):
+        #this will open a window that displays the logs
+        logs = toga.Window(title="Logs")
+        logs.content = toga.ScrollContainer(
+            content=toga.MultilineTextInput(
+                value="".join(traceback.format_stack()),
+                style=Pack(flex=1, padding=10, font_size=14),
+            ),
+            style=Pack(flex=1, padding=10)
+        )
+        logs.show()
 
     async def action_select_folders(self, widget):
         try:
@@ -195,7 +207,11 @@ class Fichero(toga.App):
 
         # Buttons
         btn_style = Pack(flex=1)
-        
+        btn_view_logs = toga.Button(
+            "View Logs",
+            on_press=self.action_open_logs,
+            style=btn_style,
+        )
         btn_select_folders = toga.Button(
             "Select Folders",
             on_press=self.action_select_folders,
@@ -240,8 +256,8 @@ class Fichero(toga.App):
                         models_config, 
                         provider_config)
                 print(f"Processed {len(docs)} documents.")
-                if docs:
-                    print(docs[0].document.export_to_markdown())
+                #if docs:
+                #    print(docs[0].document.export_to_markdown())
             else:
                 self.info_label.text = "Please select folders\n and a model before starting."
 
@@ -275,6 +291,7 @@ class Fichero(toga.App):
                logo,
                btn_start,
                self.info_label,
+               btn_view_logs
                #btn_test_chroma
             ],
             #make the container only as wide as the logo
