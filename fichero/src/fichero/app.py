@@ -1,6 +1,7 @@
 import traceback
 from pathlib import Path
 import os
+import json
 import toga
 from toga.constants import COLUMN
 from toga.style import Pack
@@ -69,6 +70,7 @@ class Fichero(toga.App):
                 )
             )
             if path_names is not None:
+                
                 self.label.text = (
                     f"📁 Folders selected:\n {'\n'.join([str(p) for p in path_names])}"
                 )
@@ -161,6 +163,11 @@ class Fichero(toga.App):
                 current_model_data["name"] = name_input.value
                 current_model_data["provider"] = provider_input.value
                 self.center_label.text = f"✨ Model: {current_model_data['name']}\n  Provider: {current_model_data['provider']}"
+                #save changes to disk 
+                self.paths.config.write_text(
+                    "models_config.json",
+                    json.dumps(models_config, indent=4)
+                )
                 editor_window.close()
 
             save_button = toga.Button("Save", on_press=save_changes, style=Pack(margin_top=10))
@@ -193,7 +200,7 @@ class Fichero(toga.App):
         self.on_exit = self.exit_handler
         self.folders = []
         self.output_folder = None
-        # Label to show responses.
+        # Text Labels to show responses.
         self.label = toga.Label("📁 Folders selected:\n", style=Pack(margin_top=20))
         self.center_label = toga.Label(
             "✨ Model:", style=Pack(margin_top=20)
@@ -217,11 +224,7 @@ class Fichero(toga.App):
             on_press=self.action_select_folders,
             style=btn_style,
         )
-        btn_select_model = toga.Button(
-            "Select Model",
-            on_press=self.action_select_model,
-            style=btn_style,
-        )
+        
         btn_select_output_folders = toga.Button(
             "Select Output Folder",
             on_press=self.action_select_output_folder,
@@ -230,6 +233,7 @@ class Fichero(toga.App):
         btn_clear = toga.Button("Clear", on_press=self.do_clear, style=btn_style)
         model_selection = toga.Selection(
             items=models_config,
+            on_change=self.action_select_model,
             accessor="name",
         )
         self.model_selection = model_selection
@@ -311,7 +315,6 @@ class Fichero(toga.App):
         center_container = toga.Box(
             children=[
                 model_selection,
-                btn_select_model,
                 btn_models_config,
                 self.center_label
             ],
