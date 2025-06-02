@@ -111,7 +111,7 @@ class Fichero(toga.App):
         self.center_label.text = f"✨ Model: {self.model_selection.value.name}\n  Provider: {self.model_selection.value.provider}"
 
     def action_select_output_format(self, widget):
-        self.right_label.text = "💾 Output Format:\n Markdown?"
+        self.right_label.text = "💾 Output Format:\n Markdown (that's all you get for now)"
 
     def action_open_model_config_editor(self, widget):
         # Create a window for editing models_config
@@ -126,16 +126,21 @@ class Fichero(toga.App):
             # pop current model from the list to avoid duplication
             self.models_config.remove(current_model_data)
             # Create input fields for editing model fields
+            name_label = toga.Label("Model Name:")
             name_input = toga.TextInput(value=current_model_data["name"], placeholder="Model Name")
+            provider_label = toga.Label("Provider:")
             provider_input = toga.TextInput(value=current_model_data["provider"], placeholder="Provider")
+            api_key_label = toga.Label("API Key:")
             api_key_input = toga.TextInput(
                 value=current_model_data.get("api_key", ""),
                 placeholder="API Key (optional)"
             )
-            prompt_input = toga.TextInput(
+            prompt_label = toga.Label("Prompt:")
+            prompt_input = toga.MultilineTextInput(
                 value=current_model_data.get("prompt", "Extract text to markdown!"),
                 placeholder="Prompt (optional)"
             )
+            url_label = toga.Label("API URL:")
             url_input = toga.TextInput(
                 value=current_model_data.get("url", ""),
                 placeholder="API URL (optional)"
@@ -157,8 +162,12 @@ class Fichero(toga.App):
             save_button = toga.Button("Save", on_press=save_changes, style=Pack(margin_top=10))
 
             model_box = toga.Box(
-                children=[name_input, provider_input, api_key_input, 
-                          prompt_input, url_input, save_button],
+                children=[name_label, name_input, 
+                          provider_label, provider_input, 
+                          api_key_label, api_key_input, 
+                          prompt_label, prompt_input, 
+                          url_label, url_input, 
+                          save_button],
                 style=Pack(direction=COLUMN, padding=10)
             )
              
@@ -184,14 +193,12 @@ class Fichero(toga.App):
         self.main_window = toga.MainWindow()
         self.on_exit = self.exit_handler
         self.folders = []
-        self.output_folder = None
+        self.output_folder = self.paths.data
         # Text Labels to show responses.
         self.label = toga.Label("📁 Folders selected:\n", style=Pack(margin_top=20))
-        self.center_label = toga.Label(
-            "✨ Model:", style=Pack(margin_top=20)
-        )
+        
         self.right_label = toga.Label(
-            "💾 Output Folder:\n", style=Pack(margin_top=20)
+            f"💾 Output Folder:\n {self.paths.data}", style=Pack(margin_top=20)
         )
         self.info_label = toga.Label("", style=Pack(margin_top=20))
         self.window_counter = 0
@@ -222,7 +229,10 @@ class Fichero(toga.App):
             accessor="name",
         )
         self.model_selection = model_selection
-        
+        self.center_label = toga.Label(
+            f"✨ Model: {self.model_selection.value.name if self.model_selection.value else 'None'}\n  Provider: {self.model_selection.value.provider if self.model_selection.value else 'None'}",
+            style=Pack(margin_top=20, margin_bottom=20, flex=1),
+        )
         btn_models_config = toga.Button(
             "Edit Model Config",
             on_press=self.action_open_model_config_editor,
