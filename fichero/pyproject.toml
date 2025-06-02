@@ -26,7 +26,8 @@ requires = [
     "pygobject==3.50.0", #needed due to error in Ubuntu 22.04
     "chromadb==1.0.11",
     "langchain==0.3.25",
-    "sentence-transformers==4.1.0"
+    "sentence-transformers==4.1.0",
+    "srsly"
 ]
 test_requires = [
     "pytest",

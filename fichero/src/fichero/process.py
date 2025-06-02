@@ -1,3 +1,4 @@
+import toga
 import logging
 from pathlib import Path
 from docling.datamodel.base_models import InputFormat
@@ -74,11 +75,7 @@ def sandbox_vlm_options(model: str, prompt: str, api_key: str = None):
     )
     return options
 
-def process_folders(
-        app,
-        models_config:list = None, 
-        provider_config:dict = None
-        ) -> list:
+def process_folders(app:toga.App) -> list:
     """
     Process all files in a directory using the specified VLM type, model, and prompt.
     
@@ -93,30 +90,32 @@ def process_folders(
     output_folder = app.output_folder
     provider = app.model_selection.value.provider 
     model = app.model_selection.value.name 
-    provider_config= provider_config[provider]
-    api_key = provider_config.get('api_key', None)
-    prompt = provider_config.get('prompt', "Extract text to markdown!")
-    
-    docs = []
-    for input_dir in input_folders:
-        if input_dir.is_dir():
-            for file_path in input_dir.glob('**/*'):
-                if file_path.suffix.lower().replace('.','') in supported_extensions:
-                    print(f"Processing file 105: {file_path}")
-                    doc = process_file(file_path, provider, model, prompt, api_key)
-                    if doc:
-                        docs.append(doc)
-                    if doc and output_folder:
-                        # Save the processed document to the output folder
-                        output_path = output_folder / file_path.with_suffix('.md').relative_to(input_dir)
-                        output_path.parent.mkdir(parents=True, exist_ok=True)
-                        if not output_path.is_dir():
-                            doc.document.save_as_markdown(str(output_path))  # using str because of IsADirectoryError
-                        else:
-                            raise IsADirectoryError(f"Output path {output_path} is a directory, not a file.")
-                return docs
-        else:
-            raise ValueError(f"Input path {input_dir} is not a directory.")
+    model_config = [a for a in app.models_config if a['name'] == model] 
+    if model_config:
+        model_config = model_config[0]    
+        api_key = model_config.get('api_key', None)
+        prompt = model_config.get('prompt', "Extract text to markdown!")
+        
+        docs = []
+        for input_dir in input_folders:
+            if input_dir.is_dir():
+                for file_path in input_dir.glob('**/*'):
+                    if file_path.suffix.lower().replace('.','') in supported_extensions:
+                        print(f"Processing file 105: {file_path}")
+                        doc = process_file(file_path, provider, model, prompt, api_key)
+                        if doc:
+                            docs.append(doc)
+                        if doc and output_folder:
+                            # Save the processed document to the output folder
+                            output_path = output_folder / file_path.with_suffix('.md').relative_to(input_dir)
+                            output_path.parent.mkdir(parents=True, exist_ok=True)
+                            if not output_path.is_dir():
+                                doc.document.save_as_markdown(str(output_path))  # using str because of IsADirectoryError
+                            else:
+                                raise IsADirectoryError(f"Output path {output_path} is a directory, not a file.")
+                    return docs
+            else:
+                raise ValueError(f"Input path {input_dir} is not a directory.")
 
 
 def process_file(input_doc_path: Path, provider: str = "dashscope", model: str = "qwen-vl-max-latest", prompt: str = "Extract text to markdown.", api_key: str = None):

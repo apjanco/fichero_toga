@@ -2,46 +2,14 @@ import traceback
 from pathlib import Path
 import os
 import json
+import srsly
 import toga
 from toga.constants import COLUMN
 from toga.style import Pack
 from .process import process_folders
 from .store import test_chroma_client
+from .secrets import get_models_config
 
-models_config = [
-    {"name": "qwen-vl-max-latest", "provider": "dashscope"},
-    {"name": "granite3.2-vision", "provider": "ollama"},
-    {"name": "gpt-4o", "provider": "sandbox"},
-]
-
-
-provider_config = {
-    "dashscope": {
-    "api_key": os.environ.get('DASHSCOPE_API_KEY'),
-        "url": "https://api.dashscope.com/v1/vlm",
-        "prompt": "Extract text to markdown.",
-    },
-    "ollama": {
-        "api_key": "OLLAMA_NEEDS_NO_KEY",
-        "url": "http://localhost:11434/api/v1/chat/completions",
-        "prompt": "Extract text to markdown.",
-    },
-    "gpt4all":{
-        "api_key": "GPT4ALL_NEEDS_NO_KEY",
-        "url": "http://localhost:11434/api/v1/chat/completions",
-        "prompt": "Extract text to markdown.",
-    },
-    "openai": {
-        "api_key": os.environ.get('OPENAI_API_KEY'),
-        "url": "https://api.openai.com/v1/chat/completions",
-        "prompt": "Extract text to markdown.",
-    },
-    "sandbox": {
-        "api_key": os.environ.get('SANDBOX_API_KEY'),
-        "url": "complicated",
-        "prompt": "Extract text to markdown.",
-    }
-}
 
 class Fichero(toga.App):
     # Button callback functions
@@ -152,28 +120,45 @@ class Fichero(toga.App):
         # get currently selected model 
         current_model = self.model_selection.value.name
         # Create a box for each model entry
-        current_model_data = [model for model in models_config if model["name"] == current_model]
+        current_model_data = [model for model in self.models_config if model["name"] == current_model]
         if current_model_data:
             current_model_data = current_model_data[0]
+            # pop current model from the list to avoid duplication
+            self.models_config.remove(current_model_data)
             # Create input fields for editing model fields
             name_input = toga.TextInput(value=current_model_data["name"], placeholder="Model Name")
             provider_input = toga.TextInput(value=current_model_data["provider"], placeholder="Provider")
+            api_key_input = toga.TextInput(
+                value=current_model_data.get("api_key", ""),
+                placeholder="API Key (optional)"
+            )
+            prompt_input = toga.TextInput(
+                value=current_model_data.get("prompt", "Extract text to markdown!"),
+                placeholder="Prompt (optional)"
+            )
+            url_input = toga.TextInput(
+                value=current_model_data.get("url", ""),
+                placeholder="API URL (optional)"
+            )
 
             def save_changes(widget):
                 current_model_data["name"] = name_input.value
                 current_model_data["provider"] = provider_input.value
-                self.center_label.text = f"✨ Model: {current_model_data['name']}\n  Provider: {current_model_data['provider']}"
+                current_model_data["api_key"] = api_key_input.value
+                current_model_data["prompt"] = prompt_input.value
+                current_model_data["url"] = url_input.value
+                # add updated model back to the list
+                self.models_config.append(current_model_data)
                 #save changes to disk 
-                self.paths.config.write_text(
-                    "models_config.json",
-                    json.dumps(models_config, indent=4)
-                )
+                srsly.write_jsonl(self.paths.data / "models_config.jsonl", self.models_config)
+                
                 editor_window.close()
 
             save_button = toga.Button("Save", on_press=save_changes, style=Pack(margin_top=10))
 
             model_box = toga.Box(
-                children=[name_input, provider_input, save_button],
+                children=[name_input, provider_input, api_key_input, 
+                          prompt_input, url_input, save_button],
                 style=Pack(direction=COLUMN, padding=10)
             )
              
@@ -211,7 +196,7 @@ class Fichero(toga.App):
         self.info_label = toga.Label("", style=Pack(margin_top=20))
         self.window_counter = 0
         self.close_attempts = set()
-
+        self.models_config = get_models_config(self)
         # Buttons
         btn_style = Pack(flex=1)
         btn_view_logs = toga.Button(
@@ -232,7 +217,7 @@ class Fichero(toga.App):
         )
         btn_clear = toga.Button("Clear", on_press=self.do_clear, style=btn_style)
         model_selection = toga.Selection(
-            items=models_config,
+            items=self.models_config,
             on_change=self.action_select_model,
             accessor="name",
         )
@@ -255,13 +240,7 @@ class Fichero(toga.App):
         def on_start_pressed(widget):
             if self.folders and self.model_selection.value:
                 self.info_label.text = ""
-                docs = process_folders(
-                        self,
-                        models_config, 
-                        provider_config)
-                print(f"Processed {len(docs)} documents.")
-                #if docs:
-                #    print(docs[0].document.export_to_markdown())
+                docs = process_folders(self)
             else:
                 self.info_label.text = "Please select folders\n and a model before starting."
 
@@ -277,6 +256,7 @@ class Fichero(toga.App):
                 margin_bottom=20,
             ),
         )
+        
         my_image = toga.Image(self.paths.app / "resources"/ "icons" / "fichero-512.png")
         logo = toga.ImageView(
             my_image,
