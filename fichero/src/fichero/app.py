@@ -218,7 +218,7 @@ class Fichero(toga.App):
         )
         
         btn_select_output_folders = toga.Button(
-            "Select Output Folder",
+            "Change Output Folder",
             on_press=self.action_select_output_folder,
             style=btn_style,
         )
